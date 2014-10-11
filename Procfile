@@ -1,0 +1,1 @@
+web: gunicorn tenacious.wsgi --log-file -
