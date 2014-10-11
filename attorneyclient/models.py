@@ -5,6 +5,14 @@ from django.contrib.auth.models import User
 class Client(models.Model):
     first_name = models.CharField(max_length=30)
     last_name = models.CharField(max_length=30)
+    address = models.CharField(max_length=30)
+    phone_number = models.CharField(max_length=30)
+
+class Case(models.Model):
+    case_number = models.CharField(max_length=30)
+    status = models.CharField(max_length=6, choices=(('Open','Open'),('Closed','Closed')), default='Open')
+    landlord = models.CharField(max_length=50)
+    tenant = models.CharField(max_length=50)
 
 class Form(models.Model):
     form_name = models.CharField(max_length=200)
