@@ -36,6 +36,11 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # Additional Applications
+    'crispy_forms', # http://django-crispy-forms.readthedocs.org/en/latest/index.html
+
+    # Customized Applications
     'attorneyclient'
 )
 
@@ -57,15 +62,15 @@ WSGI_APPLICATION = 'tenacious.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.7/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'tenacious_db',                      
-        'USER': 'tenacious_admin',
-        'PASSWORD': 'tenacious_password',
-        'HOST': 'localhost',
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql_psycopg2',
+#         'NAME': 'tenacious_db',                      
+#         'USER': 'tenacious_admin',
+#         'PASSWORD': 'tenacious_password',
+#         'HOST': 'localhost',
+#     }
+# }
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.7/topics/i18n/
@@ -83,7 +88,8 @@ USE_TZ = True
 
 # Parse database configuration from $DATABASE_URL
 import dj_database_url
-DATABASES['default'] =  dj_database_url.config()
+DATABASES = {'default': dj_database_url.config()}
+# DATABASES = {'default': dj_database_url.config(default='postgres://tenacious_admin:tenacious_password@localhost/tenacious_db')}
 
 # Honor the 'X-Forwarded-Proto' header for request.is_secure()
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -100,3 +106,6 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'static'),
 )
+
+# Configuration for Crispy crispy_forms
+CRISPY_TEMPLATE_PACK = 'bootstrap3'

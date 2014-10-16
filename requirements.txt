@@ -1,7 +1,7 @@
 Django==1.7
-South
 psycopg2
 gunicorn
 dj-database-url
 dj-static
 static
+django-crispy-forms
