@@ -250,7 +250,6 @@ class SubmissionForm(ModelForm):
             'submitted_at',
             'ip_address',
             'user',
-            'is_public',
             'featured')
 
 

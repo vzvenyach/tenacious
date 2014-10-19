@@ -86,7 +86,6 @@ class SurveyAdmin(admin.ModelAdmin):
         'title',
         'slug',
         'survey_date',
-        'ends_at',
         'is_published',
         'site',
         submissions_as)
@@ -109,9 +108,9 @@ class SubmissionAdmin(admin.ModelAdmin):
     raw_id_fields = ('user',)
     search_fields = ('answer__text_answer',)
     list_display = ('survey', 'submitted_at', 'user',
-                    'ip_address', 'email', 'is_public',)
-    list_editable = ('is_public',)
-    list_filter = ('survey', 'submitted_at', 'is_public')
+                    'ip_address', 'email',)
+    list_editable = ()
+    list_filter = ('survey', 'submitted_at')
     date_hierarchy = 'submitted_at'
     inlines = [AnswerInline]
 

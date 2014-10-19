@@ -3,12 +3,6 @@ import re
 from django.conf import settings as _gs
 
 
-""" This sets the default "Moderate submissions" value of surveys. """
-MODERATE_SUBMISSIONS = getattr(_gs,
-                               'CROWDSOURCING_MODERATE_SUBMISSIONS',
-                               False)
-
-
 IMAGE_UPLOAD_PATTERN = getattr(_gs,
                                'CROWDSOURCING_IMAGE_UPLOAD_PATTERN',
                                'crowdsourcing/images/%Y/%m/%d')

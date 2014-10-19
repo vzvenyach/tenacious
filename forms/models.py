@@ -38,20 +38,12 @@ except ImportError:
     PositionField = None
 
 
-ARCHIVE_POLICY_CHOICES = ChoiceEnum(('immediate',
-                                     'post-close',
-                                     'never'))
-
-
 class LiveSurveyManager(models.Manager):
     def get_query_set(self):
         now = datetime.datetime.now()
         return super(LiveSurveyManager, self).get_query_set().filter(
-            is_published=True,
-            starts_at__lte=now).filter(
-            ~models.Q(archive_policy__exact=ARCHIVE_POLICY_CHOICES.NEVER) |
-            models.Q(ends_at__isnull=True) |
-            models.Q(ends_at__gt=now))
+            is_published=True).filter(
+            ~models.Q(archive_policy__exact=ARCHIVE_POLICY_CHOICES.NEVER))
 
 
 FORMAT_CHOICES = ('json', 'csv', 'xml', 'html',)
@@ -65,30 +57,7 @@ class Survey(models.Model):
     thanks = models.TextField(
         blank=True,
         help_text="When a user submits the survey, display this message.")
-
-    moderate_submissions = models.BooleanField(
-        default=local_settings.MODERATE_SUBMISSIONS,
-        help_text=_("If checked, all submissions will start as NOT public and "
-                    "you will have to manually make them public. If your "
-                    "survey doesn't show any results, it may be because this "
-                    "option is checked."))
-    allow_comments = models.BooleanField(
-        default=False,
-        help_text="Allow comments on user submissions.")
-    allow_voting = models.BooleanField(
-        default=False,
-        help_text="Users can vote on submissions.")
-    archive_policy = models.IntegerField(
-        choices=ARCHIVE_POLICY_CHOICES,
-        default=ARCHIVE_POLICY_CHOICES.IMMEDIATE,
-        help_text=_("At what point will Crowdsourcing make the results "
-                    "public? immediate: All results are immediately public. "
-                    "post-close: Results are public on or after the "
-                    "\"ends at\" option documented below. never: Results are "
-                    "never public."))
-    starts_at = models.DateTimeField(default=datetime.datetime.now)
-    survey_date = models.DateField(blank=True, null=True, editable=False)
-    ends_at = models.DateTimeField(null=True, blank=True)
+    survey_date = models.DateField(blank=True, null=True, editable=False, auto_now_add=True)
     has_script = models.BooleanField(default=False,
                                      help_text="If enabled, template will render script tag for STATIC_URL/surveys/slug-name.js")
     is_published = models.BooleanField(default=False)
@@ -127,28 +96,11 @@ class Survey(models.Model):
                     questions=[q.to_jsondata() for q in questions])
 
     def save(self, **kwargs):
-        self.survey_date = self.starts_at.date()
         super(Survey, self).save(**kwargs)
 
     class Meta:
-        ordering = ('-starts_at',)
+        ordering = ('-survey_date',)
         unique_together = (('survey_date', 'slug'),)
-
-    @property
-    def is_open(self):
-        now = datetime.datetime.now()
-        if self.ends_at:
-            return self.starts_at <= now < self.ends_at
-        return self.starts_at <= now
-
-    @property
-    def is_live(self):
-        now = datetime.datetime.now()
-        return all([
-            self.is_published,
-            self.starts_at <= now,
-            any([self.archive_policy != ARCHIVE_POLICY_CHOICES.NEVER,
-                not self.ends_at or now < self.ends_at])])
 
     def get_public_fields(self, fieldnames=None):
         if fieldnames:
@@ -731,13 +683,6 @@ class Submission(models.Model):
     submitted_at = models.DateTimeField(default=datetime.datetime.now)
     session_key = models.CharField(max_length=40, blank=True, editable=False)
     featured = models.BooleanField(default=False)
-
-    # for moderation
-    is_public = models.BooleanField(
-        default=True,
-        help_text=_("Crowdsourcing only displays public submissions. The "
-                    "'Moderate submissions' checkbox of the survey determines "
-                    "the default value of this field."))
 
     class Meta:
         ordering = ('-submitted_at',)
