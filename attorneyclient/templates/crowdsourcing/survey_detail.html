@@ -9,6 +9,8 @@
 
 {% if forms %}
   <form method="POST" enctype="multipart/form-data" class="survey">
+{% csrf_token %}
+
     {% for form in forms %}
       {{ form.as_p }}
     {% endfor %}

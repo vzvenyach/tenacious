@@ -42,15 +42,11 @@
           <a class="navbar-brand" href="/">TENACIOUS</a>
         </div>
         <div class="navbar-collapse collapse">
-          <form class="navbar-form navbar-right" role="form">
-            <div class="form-group">
-              <input type="text" placeholder="Email" class="form-control">
-            </div>
-            <div class="form-group">
-              <input type="password" placeholder="Password" class="form-control">
-            </div>
-            <button type="submit" class="btn btn-success">Sign in</button>
-          </form>
+        {% if user.is_authenticated %}
+          <p class="navbar-right" style="color:#fff">Welcome, {{ user.username }}. Thanks for logging in. <a href="{% url 'django.contrib.auth.views.logout' %}">Logout</a></p>
+        {% else %}
+        <a href="/login"><button class="btn btn-success navbar-right">Sign in</button></a>    
+          {% endif %}
         </div><!--/.navbar-collapse -->
       </div>
     </div>
