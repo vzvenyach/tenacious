@@ -51,7 +51,6 @@ def _user_entered_survey(request, survey):
 def _entered_no_more_allowed(request, survey):
     """ The user entered the survey and the survey allows only one entry. """
     return all((
-        not survey.allow_multiple_submissions,
         _user_entered_survey(request, survey),))
 
 
@@ -302,8 +301,7 @@ def submissions(request, format):
         'user',
         'submitted_from',
         'submitted_to',
-        'featured',
-        'is_public')
+        'featured')
     if is_staff:
         basic_filters += BALLOT_STUFFING_FIELDS
     survey_slug = ""
@@ -330,7 +328,7 @@ def submissions(request, format):
                 search_field = 'submitted_at__gte'
             else:
                 search_field = 'submitted_at__lte'
-        elif field in('featured', 'is_public',):
+        elif field in('featured', ):
             falses = ('f', 'false', 'no', 'n', '0',)
             value = len(value) and not value.lower() in falses
         # search_field is unicode but needs to be ascii.
@@ -509,8 +507,7 @@ def _survey_report(request, slug, report, page, templates):
             raise Http404
     survey = _get_survey_or_404(slug, request)
     # is the survey anything we can actually have a report on?
-    is_public = survey.is_live and survey.can_have_public_submissions()
-    if not is_public and not request.user.is_staff:
+    if not request.user.is_staff:
         raise Http404
     reports = survey.surveyreport_set.all()
     if report:
@@ -573,7 +570,6 @@ def _survey_report(request, slug, report, page, templates):
         filters=filters,
         report=report_obj,
         page_answers=page_answers,
-        is_public=is_public,
         display_individual_results=display_individual_results,
         request=request)
 

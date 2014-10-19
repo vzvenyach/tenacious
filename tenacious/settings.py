@@ -69,7 +69,7 @@ WSGI_APPLICATION = 'tenacious.wsgi.application'
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-#         'NAME': 'tenacious_db',                      
+#         'NAME': 'tenacious_db',
 #         'USER': 'tenacious_admin',
 #         'PASSWORD': 'tenacious_password',
 #         'HOST': 'localhost',
