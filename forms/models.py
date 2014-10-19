@@ -20,14 +20,11 @@ from django.core.cache import cache
 from django.core.urlresolvers import reverse
 from django.db import models, connection
 from django.db.models import Count
-from django.db.models.fields.files import ImageFieldFile
 from django.db.models.query import EmptyQuerySet
 from decimal import Decimal
 from django.utils.translation import ugettext_lazy as _
 from django.utils.safestring import mark_safe
 
-
-from .fields import ImageWithThumbnailsField
 from .geo import get_latitude_and_longitude
 from .util import ChoiceEnum
 from . import settings as local_settings
@@ -747,8 +744,6 @@ class Submission(models.Model):
 
     def to_jsondata(self, answer_lookup=None, include_private_questions=False):
         def to_json(v):
-            if isinstance(v, ImageFieldFile):
-                return v.url if v else ''
             return v
         if not answer_lookup:
             answer_lookup = get_all_answers([self], include_private_questions)
@@ -803,13 +798,6 @@ class Answer(models.Model):
     integer_answer = models.IntegerField(blank=True, null=True)
     float_answer = models.FloatField(blank=True, null=True)
     boolean_answer = models.NullBooleanField()
-    image_answer_thumbnail_meta = dict(size=(250, 250)) # width, height
-    image_answer = ImageWithThumbnailsField(
-        max_length=500,
-        blank=True,
-        thumbnail=image_answer_thumbnail_meta,
-        #extra_thumbnails=local_settings.EXTRA_THUMBNAILS,
-        upload_to=local_settings.IMAGE_UPLOAD_PATTERN)
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
 
