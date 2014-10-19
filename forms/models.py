@@ -20,14 +20,11 @@ from django.core.cache import cache
 from django.core.urlresolvers import reverse
 from django.db import models, connection
 from django.db.models import Count
-from django.db.models.fields.files import ImageFieldFile
 from django.db.models.query import EmptyQuerySet
 from decimal import Decimal
 from django.utils.translation import ugettext_lazy as _
 from django.utils.safestring import mark_safe
 
-
-from .fields import ImageWithThumbnailsField
 from .geo import get_latitude_and_longitude
 from .util import ChoiceEnum
 from . import settings as local_settings
@@ -41,27 +38,12 @@ except ImportError:
     PositionField = None
 
 
-try:
-    from .flickrsupport import sync_to_flickr, get_group_id
-except ImportError:
-    logging.warn('no flickr support available')
-    sync_to_flickr = None
-
-
-ARCHIVE_POLICY_CHOICES = ChoiceEnum(('immediate',
-                                     'post-close',
-                                     'never'))
-
-
 class LiveSurveyManager(models.Manager):
     def get_query_set(self):
         now = datetime.datetime.now()
         return super(LiveSurveyManager, self).get_query_set().filter(
-            is_published=True,
-            starts_at__lte=now).filter(
-            ~models.Q(archive_policy__exact=ARCHIVE_POLICY_CHOICES.NEVER) |
-            models.Q(ends_at__isnull=True) |
-            models.Q(ends_at__gt=now))
+            is_published=True).filter(
+            ~models.Q(archive_policy__exact=ARCHIVE_POLICY_CHOICES.NEVER))
 
 
 FORMAT_CHOICES = ('json', 'csv', 'xml', 'html',)
@@ -75,30 +57,7 @@ class Survey(models.Model):
     thanks = models.TextField(
         blank=True,
         help_text="When a user submits the survey, display this message.")
-
-    moderate_submissions = models.BooleanField(
-        default=local_settings.MODERATE_SUBMISSIONS,
-        help_text=_("If checked, all submissions will start as NOT public and "
-                    "you will have to manually make them public. If your "
-                    "survey doesn't show any results, it may be because this "
-                    "option is checked."))
-    allow_comments = models.BooleanField(
-        default=False,
-        help_text="Allow comments on user submissions.")
-    allow_voting = models.BooleanField(
-        default=False,
-        help_text="Users can vote on submissions.")
-    archive_policy = models.IntegerField(
-        choices=ARCHIVE_POLICY_CHOICES,
-        default=ARCHIVE_POLICY_CHOICES.IMMEDIATE,
-        help_text=_("At what point will Crowdsourcing make the results "
-                    "public? immediate: All results are immediately public. "
-                    "post-close: Results are public on or after the "
-                    "\"ends at\" option documented below. never: Results are "
-                    "never public."))
-    starts_at = models.DateTimeField(default=datetime.datetime.now)
-    survey_date = models.DateField(blank=True, null=True, editable=False)
-    ends_at = models.DateTimeField(null=True, blank=True)
+    survey_date = models.DateField(blank=True, null=True, editable=False, auto_now_add=True)
     has_script = models.BooleanField(default=False,
                                      help_text="If enabled, template will render script tag for STATIC_URL/surveys/slug-name.js")
     is_published = models.BooleanField(default=False)
@@ -111,13 +70,7 @@ class Survey(models.Model):
     sections = models.ForeignKey('Section', blank=True, null=True,
                                  editable=True, related_name='sections')
     site = models.ForeignKey(Site)
-    flickr_group_id = models.CharField(
-        max_length=60,
-        blank=True,
-        editable=False)
-    flickr_group_name = models.CharField(
-        max_length=255,
-        blank=True)
+
     default_report = models.ForeignKey(
         'SurveyReport',
         blank=True,
@@ -143,31 +96,11 @@ class Survey(models.Model):
                     questions=[q.to_jsondata() for q in questions])
 
     def save(self, **kwargs):
-        self.survey_date = self.starts_at.date()
-        self.flickr_group_id = ""
-        if self.flickr_group_name and sync_to_flickr:
-            self.flickr_group_id = get_group_id(self.flickr_group_name)
         super(Survey, self).save(**kwargs)
 
     class Meta:
-        ordering = ('-starts_at',)
+        ordering = ('-survey_date',)
         unique_together = (('survey_date', 'slug'),)
-
-    @property
-    def is_open(self):
-        now = datetime.datetime.now()
-        if self.ends_at:
-            return self.starts_at <= now < self.ends_at
-        return self.starts_at <= now
-
-    @property
-    def is_live(self):
-        now = datetime.datetime.now()
-        return all([
-            self.is_published,
-            self.starts_at <= now,
-            any([self.archive_policy != ARCHIVE_POLICY_CHOICES.NEVER,
-                not self.ends_at or now < self.ends_at])])
 
     def get_public_fields(self, fieldnames=None):
         if fieldnames:
@@ -187,8 +120,6 @@ class Survey(models.Model):
     def get_public_archive_fields(self):
         types = (
             OPTION_TYPE_CHOICES.CHAR,
-            OPTION_TYPE_CHOICES.PHOTO,
-            OPTION_TYPE_CHOICES.VIDEO,
             OPTION_TYPE_CHOICES.DATE,
             OPTION_TYPE_CHOICES.TEXT)
         return [f for f in self.get_public_fields() if f.option_type in types]
@@ -265,8 +196,6 @@ class Survey(models.Model):
 OPTION_TYPE_CHOICES = ChoiceEnum(sorted([('char', 'Text Box'),
                                          ('email', 'Email Text Box'),
                                          ('date', 'Date Box'),
-                                         ('photo', 'Photo Upload'),
-                                         ('video', 'Video Link Text Box'),
                                          ('location', 'Location Text Box'),
                                          ('integer', 'Integer Text Box'),
                                          ('float', 'Decimal Text Box'),
@@ -426,8 +355,6 @@ class Question(models.Model):
             return "date_answer"
         elif self.is_integer:
             return "integer_answer"
-        elif ot == OTC.PHOTO:
-            return "image_answer"
         return "text_answer"
 
     @property
@@ -757,20 +684,11 @@ class Submission(models.Model):
     session_key = models.CharField(max_length=40, blank=True, editable=False)
     featured = models.BooleanField(default=False)
 
-    # for moderation
-    is_public = models.BooleanField(
-        default=True,
-        help_text=_("Crowdsourcing only displays public submissions. The "
-                    "'Moderate submissions' checkbox of the survey determines "
-                    "the default value of this field."))
-
     class Meta:
         ordering = ('-submitted_at',)
 
     def to_jsondata(self, answer_lookup=None, include_private_questions=False):
         def to_json(v):
-            if isinstance(v, ImageFieldFile):
-                return v.url if v else ''
             return v
         if not answer_lookup:
             answer_lookup = get_all_answers([self], include_private_questions)
@@ -825,21 +743,8 @@ class Answer(models.Model):
     integer_answer = models.IntegerField(blank=True, null=True)
     float_answer = models.FloatField(blank=True, null=True)
     boolean_answer = models.NullBooleanField()
-    image_answer_thumbnail_meta = dict(size=(250, 250)) # width, height
-    image_answer = ImageWithThumbnailsField(
-        max_length=500,
-        blank=True,
-        thumbnail=image_answer_thumbnail_meta,
-        #extra_thumbnails=local_settings.EXTRA_THUMBNAILS,
-        upload_to=local_settings.IMAGE_UPLOAD_PATTERN)
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
-
-    flickr_id = models.CharField(max_length=64, blank=True)
-    photo_hash = models.CharField(max_length=40,
-                                  null=True,
-                                  blank=True,
-                                  editable=False)
 
     def value():
         def get(self):
@@ -850,8 +755,6 @@ class Answer(models.Model):
             OTC = OPTION_TYPE_CHOICES
             if ot == OTC.BOOL:
                 self.boolean_answer = bool(v)
-            elif ot == OTC.PHOTO:
-                self.image_answer = v
             elif ot in (OTC.FLOAT,
                         OTC.INTEGER,
                         OTC.NUMERIC_SELECT,
@@ -875,35 +778,10 @@ class Answer(models.Model):
     def save(self, **kwargs):
         # or should this be in a signal?  Or build in an option
         # to manage asynchronously? @TBD
-        if local_settings.SYNCHRONOUS_FLICKR_UPLOAD:
-            self._sync_self_to_flickr()
         super(Answer, self).save(**kwargs)
 
     def __unicode__(self):
         return unicode(self.question)
-
-    def _sync_self_to_flickr(self):
-        """ Does not save. You must save after syncing. """
-        if sync_to_flickr:
-            survey = self.question.survey
-            if survey.flickr_group_id:
-                try:
-                    sync_to_flickr(self, survey.flickr_group_id)
-                except Exception as ex:
-                    message = "error in syncing to flickr: %s" % str(ex)
-                    logging.exception(message)
-
-    @classmethod
-    def sync_to_flickr(cls):
-        if sync_to_flickr:
-            answers = cls.objects.filter(
-                image_answer__gt='',
-                flickr_id='',
-                question__survey__flickr_group_id__gt='')
-            answers = answers.select_related("question__survey")
-            for answer in answers:
-                answer._sync_self_to_flickr()
-                answer.save()
 
 
 class SurveyReport(models.Model):

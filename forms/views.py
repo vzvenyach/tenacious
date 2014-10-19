@@ -107,7 +107,6 @@ def _submit_valid_forms(forms, request, survey):
     submission = submission_form.save(commit=False)
     submission.survey = survey
     submission.ip_address = _get_remote_ip(request)
-    submission.is_public = not survey.moderate_submissions
     if request.user.is_authenticated():
         submission.user = request.user
     submission.save()
@@ -184,7 +183,6 @@ def _survey_show_form(request, survey, forms):
 def _can_show_form(request, survey):
     authenticated = request.user.is_authenticated()
     return all((
-        survey.is_open,
         authenticated,
         not _entered_no_more_allowed(request, survey)))
 
@@ -194,10 +192,9 @@ def survey_detail(request, slug):
     the form, redirects to the results page, displays messages, or whatever
     makes sense based on the survey, the user, and the user's entries. """
     survey = _get_survey_or_404(slug, request)
-    if not survey.is_open and survey.can_have_public_submissions():
+    if survey.can_have_public_submissions():
         return _survey_results_redirect(request, survey)
-    need_login = (survey.is_open
-                  and not request.user.is_authenticated())
+    need_login = (not request.user.is_authenticated())
     if _can_show_form(request, survey):
         if request.method == 'POST':
             return _survey_submit(request, survey)
@@ -247,7 +244,6 @@ def allowed_actions(request, slug):
     response = HttpResponse(mimetype='application/json')
     dump({"enter": _can_show_form(request, survey),
           "view": survey.can_have_public_submissions(),
-          "open": survey.is_open,
           "need_login": not authenticated}, response)
     return response
 
@@ -259,9 +255,7 @@ def questions(request, slug):
 
 
 def submissions(request, format):
-    """ Use this view to make arbitrary queries on submissions. If the user is
-    a logged in staff member, ignore submission.is_public,
-    question.answer_is_public, and survey.can_have_public_submissions. Use the
+    """ Use this view to make arbitrary queries on submissions. Use the
     query string to pass keys and values. For example,
     /crowdsourcing/submissions/?survey=my-survey will return all submissions
     for the survey with slug my-survey.
@@ -291,7 +285,9 @@ def submissions(request, format):
     else:
         # survey.can_have_public_submissions is complicated enough that
         # we'll check it in Python, not the database.
-        results = Submission.objects.filter(is_public=True)
+
+        ### TODO: Fix me!  public users should see no surveys!
+        results = Submission.objects.all()
     results = results.select_related("survey", "user")
     get = request.GET.copy()
     limit = int(get.pop("limit", [0])[0])
@@ -443,7 +439,7 @@ def _encode(possible):
 
 def submission(request, id):
     template = 'crowdsourcing/submission.html'
-    sub = get_object_or_404(Submission.objects, is_public=True, pk=id)
+    sub = get_object_or_404(Submission.objects, pk=id)
     return render_to_response(template, dict(submission=sub), _rc(request))
 
 
@@ -457,7 +453,7 @@ def _default_report(survey):
         OTC.NUMERIC_SELECT,
         OTC.NUMERIC_CHOICE,
         OTC.BOOL_LIST,)
-    all_choices = pie_choices + (OTC.LOCATION, OTC.PHOTO)
+    all_choices = pie_choices + (OTC.LOCATION)
     public_fields = survey.get_public_fields()
     fields = [f for f in public_fields if f.option_type in all_choices]
     report = SurveyReport(
@@ -470,8 +466,6 @@ def _default_report(survey):
             type = SURVEY_DISPLAY_TYPE_CHOICES.PIE
         elif field.option_type == OTC.LOCATION:
             type = SURVEY_DISPLAY_TYPE_CHOICES.MAP
-        elif field.option_type == OTC.PHOTO:
-            type = SURVEY_DISPLAY_TYPE_CHOICES.SLIDESHOW
         displays.append(SurveyReportDisplay(
             report=report,
             display_type=type,
@@ -519,7 +513,6 @@ def _survey_report(request, slug, report, page, templates):
     else:
         report_obj = _default_report(survey)
 
-    archive_fields = list(survey.get_public_archive_fields())
     is_staff = request.user.is_staff
     if is_staff:
         submissions = survey.submission_set.all()
@@ -558,7 +551,7 @@ def _survey_report(request, slug, report, page, templates):
 
     display_individual_results = all([
         report_obj.display_individual_results,
-        archive_fields or (is_staff and fields)])
+        (is_staff and fields)])
     context = dict(
         survey=survey,
         submissions=submissions,
@@ -566,7 +559,6 @@ def _survey_report(request, slug, report, page, templates):
         page_obj=page_obj,
         pages_to_link=pages_to_link,
         fields=fields,
-        archive_fields=archive_fields,
         filters=filters,
         report=report_obj,
         page_answers=page_answers,
@@ -622,8 +614,7 @@ def location_question_results(
     limit_map_answers,
     survey_report_slug=""):
     question = get_object_or_404(Question.objects.select_related("survey"),
-                                 pk=question_id,
-                                 answer_is_public=True)
+                                 pk=question_id)
     is_staff = request.user.is_staff
     if not question.survey.can_have_public_submissions() and not is_staff:
         raise Http404
@@ -651,7 +642,8 @@ def location_question_results(
         ~Q(latitude=None),
         ~Q(longitude=None)).order_by("-submission__submitted_at")
     if not is_staff:
-        answers = answers.filter(submission__is_public=True)
+        ### TODO: Fix me!  Public should see nothing.
+        answers = answers
     if featured:
         answers = answers.filter(submission__featured=True)
     answers = extra_from_filters(
@@ -685,7 +677,7 @@ def location_question_map(
     survey_report_slug=""):
 
     question = Question.objects.get(pk=question_id)
-    if not question.answer_is_public and not request.user.is_staff:
+    if not request.user.is_staff:
         raise Http404
     report = None
     limit = 0
@@ -718,5 +710,5 @@ def submission_for_map(request, id):
     if request.user.is_staff:
         sub = get_object_or_404(Submission.objects, pk=id)
     else:
-        sub = get_object_or_404(Submission.objects, is_public=True, pk=id)
+        sub = get_object_or_404(Submission.objects, pk=id)
     return render_to_response(template, dict(submission=sub), _rc(request))

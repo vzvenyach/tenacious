@@ -46,6 +46,9 @@ INSTALLED_APPS = (
 
     # Survey app for forms
     'forms',
+
+    # Migrations
+    'south'
 )
 
 MIDDLEWARE_CLASSES = (

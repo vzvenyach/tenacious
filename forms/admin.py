@@ -16,11 +16,6 @@ from .models import (Question, Survey, Answer, Section, Submission,
                      SURVEY_AGGREGATE_TYPE_CHOICES, FORMAT_CHOICES)
 
 
-try:
-    from .flickrsupport import get_group_names, get_group_id
-except ImportError:
-    get_group_names = None
-
 class QuestionForm(ModelForm):
     class Meta:
         model = Question
@@ -66,44 +61,14 @@ class SectionInline(admin.StackedInline):
     form = SectionForm
 
 
-def _flickr_group_choices():
-    blank = [('', '------',)]
-    if get_group_names:
-        return blank + [(n, n,) for n in get_group_names()]
-    return blank
-
-
 class SurveyAdminForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(SurveyAdminForm, self).__init__(*args, **kwargs)
         qs = SurveyReport.objects.filter(survey=self.instance)
         self.fields['default_report'].queryset = qs
-        self.fields['flickr_group_name'].widget = Select(choices=_flickr_group_choices())
 
     class Meta:
         model = Survey
-
-    def clean_flickr_group_name(self):
-        group = self.cleaned_data.get('flickr_group_name', "")
-        if group:
-            if not get_group_names:
-                raise ValidationError(
-                    _("Flickr support is broken. Contact a programmer."))
-            elif not get_group_id(group):
-                names = ", ".join(get_group_names())
-                if names:
-                    args = (group, names)
-                    raise ValidationError(
-                        _("You can't access this group: %s. Either the group "
-                          "doesn't exist, or you don't have permission. You "
-                          "have permission to these groups: %s") % args)
-                else:
-                    raise ValidationError(
-                        _("You can't access any Flickr groups. Either you "
-                          "don't have any groups or your configuration "
-                          "settings are incorrect and you need to contact a "
-                          "programmer."))
-        return group
 
 
 def submissions_as(obj):
@@ -121,7 +86,6 @@ class SurveyAdmin(admin.ModelAdmin):
         'title',
         'slug',
         'survey_date',
-        'ends_at',
         'is_published',
         'site',
         submissions_as)
@@ -144,9 +108,9 @@ class SubmissionAdmin(admin.ModelAdmin):
     raw_id_fields = ('user',)
     search_fields = ('answer__text_answer',)
     list_display = ('survey', 'submitted_at', 'user',
-                    'ip_address', 'email', 'is_public',)
-    list_editable = ('is_public',)
-    list_filter = ('survey', 'submitted_at', 'is_public')
+                    'ip_address', 'email',)
+    list_editable = ()
+    list_filter = ('survey', 'submitted_at')
     date_hierarchy = 'submitted_at'
     inlines = [AnswerInline]
 
