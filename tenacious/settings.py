@@ -34,6 +34,7 @@ INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
+    'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
@@ -41,7 +42,10 @@ INSTALLED_APPS = (
     'crispy_forms', # http://django-crispy-forms.readthedocs.org/en/latest/index.html
 
     # Customized Applications
-    'attorneyclient'
+    'attorneyclient',
+
+    # Survey app for forms
+    'forms',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -49,7 +53,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
+    #'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
@@ -106,6 +110,8 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'static'),
 )
+
+SITE_ID = 1
 
 # Configuration for Crispy crispy_forms
 CRISPY_TEMPLATE_PACK = 'bootstrap3'
