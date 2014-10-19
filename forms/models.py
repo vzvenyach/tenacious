@@ -76,8 +76,6 @@ class Survey(models.Model):
         blank=True,
         help_text="When a user submits the survey, display this message.")
 
-    require_login = models.BooleanField(default=False)
-    allow_multiple_submissions = models.BooleanField(default=False)
     moderate_submissions = models.BooleanField(
         default=local_settings.MODERATE_SUBMISSIONS,
         help_text=_("If checked, all submissions will start as NOT public and "

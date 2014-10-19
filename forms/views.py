@@ -77,7 +77,7 @@ def _get_survey_or_404(slug, request=None):
 
 
 def _survey_submit(request, survey):
-    if survey.require_login and request.user.is_anonymous():
+    if request.user.is_anonymous():
         # again, the form should only be shown after the user is logged in, but
         # to be safe...
         return HttpResponseRedirect(_login_url(request))
@@ -186,7 +186,7 @@ def _can_show_form(request, survey):
     authenticated = request.user.is_authenticated()
     return all((
         survey.is_open,
-        authenticated or not survey.require_login,
+        authenticated,
         not _entered_no_more_allowed(request, survey)))
 
 
@@ -198,7 +198,6 @@ def survey_detail(request, slug):
     if not survey.is_open and survey.can_have_public_submissions():
         return _survey_results_redirect(request, survey)
     need_login = (survey.is_open
-                  and survey.require_login
                   and not request.user.is_authenticated())
     if _can_show_form(request, survey):
         if request.method == 'POST':
@@ -250,7 +249,7 @@ def allowed_actions(request, slug):
     dump({"enter": _can_show_form(request, survey),
           "view": survey.can_have_public_submissions(),
           "open": survey.is_open,
-          "need_login": survey.require_login and not authenticated}, response)
+          "need_login": not authenticated}, response)
     return response
 
 
