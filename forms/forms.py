@@ -151,18 +151,6 @@ class VideoAnswer(BaseAnswerForm):
         return value
 
 
-class PhotoUpload(BaseAnswerForm):
-    answer = ImageField()
-
-    def clean_answer(self):
-        answer = self.cleaned_data['answer']
-        if answer and not get_image_dimensions(answer.file):
-            raise ValidationError(_(
-                "We couldn't read your file. Make sure it's a .jpeg, .png, or "
-                ".gif file, not a .psd or other unsupported type."))
-        return answer
-
-
 class LocationAnswer(BaseAnswerForm):
     answer = CharField()
 
@@ -244,8 +232,6 @@ QTYPE_FORM = {
     OPTION_TYPE_CHOICES.NUMERIC_CHOICE: OptionRadio,
     OPTION_TYPE_CHOICES.BOOL_LIST: OptionCheckbox,
     OPTION_TYPE_CHOICES.EMAIL: EmailAnswer,
-    OPTION_TYPE_CHOICES.PHOTO: PhotoUpload,
-    OPTION_TYPE_CHOICES.VIDEO: VideoAnswer,
     OPTION_TYPE_CHOICES.LOCATION: LocationAnswer,
     OPTION_TYPE_CHOICES.RANKED: RankedAnswer,
 }

@@ -41,13 +41,6 @@ except ImportError:
     PositionField = None
 
 
-try:
-    from .flickrsupport import sync_to_flickr, get_group_id
-except ImportError:
-    logging.warn('no flickr support available')
-    sync_to_flickr = None
-
-
 ARCHIVE_POLICY_CHOICES = ChoiceEnum(('immediate',
                                      'post-close',
                                      'never'))
@@ -111,13 +104,7 @@ class Survey(models.Model):
     sections = models.ForeignKey('Section', blank=True, null=True,
                                  editable=True, related_name='sections')
     site = models.ForeignKey(Site)
-    flickr_group_id = models.CharField(
-        max_length=60,
-        blank=True,
-        editable=False)
-    flickr_group_name = models.CharField(
-        max_length=255,
-        blank=True)
+
     default_report = models.ForeignKey(
         'SurveyReport',
         blank=True,
@@ -144,9 +131,6 @@ class Survey(models.Model):
 
     def save(self, **kwargs):
         self.survey_date = self.starts_at.date()
-        self.flickr_group_id = ""
-        if self.flickr_group_name and sync_to_flickr:
-            self.flickr_group_id = get_group_id(self.flickr_group_name)
         super(Survey, self).save(**kwargs)
 
     class Meta:
@@ -187,8 +171,6 @@ class Survey(models.Model):
     def get_public_archive_fields(self):
         types = (
             OPTION_TYPE_CHOICES.CHAR,
-            OPTION_TYPE_CHOICES.PHOTO,
-            OPTION_TYPE_CHOICES.VIDEO,
             OPTION_TYPE_CHOICES.DATE,
             OPTION_TYPE_CHOICES.TEXT)
         return [f for f in self.get_public_fields() if f.option_type in types]
@@ -265,8 +247,6 @@ class Survey(models.Model):
 OPTION_TYPE_CHOICES = ChoiceEnum(sorted([('char', 'Text Box'),
                                          ('email', 'Email Text Box'),
                                          ('date', 'Date Box'),
-                                         ('photo', 'Photo Upload'),
-                                         ('video', 'Video Link Text Box'),
                                          ('location', 'Location Text Box'),
                                          ('integer', 'Integer Text Box'),
                                          ('float', 'Decimal Text Box'),
@@ -426,8 +406,6 @@ class Question(models.Model):
             return "date_answer"
         elif self.is_integer:
             return "integer_answer"
-        elif ot == OTC.PHOTO:
-            return "image_answer"
         return "text_answer"
 
     @property
@@ -835,12 +813,6 @@ class Answer(models.Model):
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
 
-    flickr_id = models.CharField(max_length=64, blank=True)
-    photo_hash = models.CharField(max_length=40,
-                                  null=True,
-                                  blank=True,
-                                  editable=False)
-
     def value():
         def get(self):
             return getattr(self, self.question.value_column)
@@ -850,8 +822,6 @@ class Answer(models.Model):
             OTC = OPTION_TYPE_CHOICES
             if ot == OTC.BOOL:
                 self.boolean_answer = bool(v)
-            elif ot == OTC.PHOTO:
-                self.image_answer = v
             elif ot in (OTC.FLOAT,
                         OTC.INTEGER,
                         OTC.NUMERIC_SELECT,
@@ -875,35 +845,10 @@ class Answer(models.Model):
     def save(self, **kwargs):
         # or should this be in a signal?  Or build in an option
         # to manage asynchronously? @TBD
-        if local_settings.SYNCHRONOUS_FLICKR_UPLOAD:
-            self._sync_self_to_flickr()
         super(Answer, self).save(**kwargs)
 
     def __unicode__(self):
         return unicode(self.question)
-
-    def _sync_self_to_flickr(self):
-        """ Does not save. You must save after syncing. """
-        if sync_to_flickr:
-            survey = self.question.survey
-            if survey.flickr_group_id:
-                try:
-                    sync_to_flickr(self, survey.flickr_group_id)
-                except Exception as ex:
-                    message = "error in syncing to flickr: %s" % str(ex)
-                    logging.exception(message)
-
-    @classmethod
-    def sync_to_flickr(cls):
-        if sync_to_flickr:
-            answers = cls.objects.filter(
-                image_answer__gt='',
-                flickr_id='',
-                question__survey__flickr_group_id__gt='')
-            answers = answers.select_related("question__survey")
-            for answer in answers:
-                answer._sync_self_to_flickr()
-                answer.save()
 
 
 class SurveyReport(models.Model):

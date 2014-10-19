@@ -457,7 +457,7 @@ def _default_report(survey):
         OTC.NUMERIC_SELECT,
         OTC.NUMERIC_CHOICE,
         OTC.BOOL_LIST,)
-    all_choices = pie_choices + (OTC.LOCATION, OTC.PHOTO)
+    all_choices = pie_choices + (OTC.LOCATION)
     public_fields = survey.get_public_fields()
     fields = [f for f in public_fields if f.option_type in all_choices]
     report = SurveyReport(
@@ -470,8 +470,6 @@ def _default_report(survey):
             type = SURVEY_DISPLAY_TYPE_CHOICES.PIE
         elif field.option_type == OTC.LOCATION:
             type = SURVEY_DISPLAY_TYPE_CHOICES.MAP
-        elif field.option_type == OTC.PHOTO:
-            type = SURVEY_DISPLAY_TYPE_CHOICES.SLIDESHOW
         displays.append(SurveyReportDisplay(
             report=report,
             display_type=type,
