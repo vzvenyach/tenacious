@@ -6,7 +6,7 @@
 </head>
 <body>
   {% if survey.has_script %}
-    <script src="{{ STATIC_URL }}js/surveys/{{ survey.slug }}.js"></script>
+    <script src="{% static 'js/surveys/{{ survey.slug }}.js' %}"></script>
   {% endif %}
 
   <p>This page demostrates how to embed surveys and survey reports anywhere on
