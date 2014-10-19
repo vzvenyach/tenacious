@@ -12,13 +12,13 @@ from django.utils.safestring import mark_safe
 from django.utils.html import escape, strip_tags
 from sorl.thumbnail.base import ThumbnailException
 
-from crowdsourcing.models import (
+from forms.models import (
     extra_from_filters, AggregateResultCount, AggregateResultSum,
     AggregateResultAverage, AggregateResult2AxisCount, Answer, FILTER_TYPE,
     OPTION_TYPE_CHOICES, SURVEY_AGGREGATE_TYPE_CHOICES, get_all_answers)
-from crowdsourcing.views import location_question_results
-from crowdsourcing.util import ChoiceEnum, get_function
-from crowdsourcing import settings as local_settings
+from forms.views import location_question_results
+from forms.util import ChoiceEnum, get_function
+from forms import settings as local_settings
 
 if local_settings.OEMBED_EXPAND:
     try:
@@ -33,7 +33,7 @@ if local_settings.OEMBED_EXPAND:
         oembed_expand = None
 else:
     try:
-        from crowdsourcing.oembedutils import oembed_expand
+        from forms.oembedutils import oembed_expand
     except ImportError as ex:
         message = 'oembed not installed. Will just display links to videos. %s'
         logging.warn(message % str(ex))
