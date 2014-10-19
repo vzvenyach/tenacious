@@ -7,7 +7,7 @@ class Client(models.Model):
     last_name = models.CharField(max_length=30)
     address = models.CharField(max_length=50, blank=True, null=True)
     address2 = models.CharField(max_length=50, blank=True, null=True)
-    zip_code = models.CharField(max_length=5, blank=True, null=True) 
+    zip_code = models.CharField(max_length=5, blank=True, null=True)
     phone_number = models.CharField(max_length=30, blank=True, null=True)
 
 class Case(models.Model):
